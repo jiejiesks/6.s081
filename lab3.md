@@ -150,7 +150,7 @@ freewalk(pagetable_t pagetable)
 
 根据freewalk函数便可去仿照写出vmprint函数
 
-```
+```c
 /**
  * @param pagetable 所要打印的页表
  * @param level 页表的层级
