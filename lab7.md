@@ -1,3 +1,5 @@
+
+
 # Chapter 7
 
 ## 7.1 多路复用
@@ -49,3 +51,176 @@ Xv6通过在两种情况下将每个CPU从一个进程切换到另一个进程�
 5. 最后恢复执行`ls`
 
 在我们的示例中，`sched`调用`swtch`切换到`cpu->scheduler`，即每个CPU的调度程序上下文。调度程序上下文之前通过`scheduler`对`swtch`（***kernel/proc.c\***:475）的调用进行了保存。当我们追踪`swtch`到返回时，他返回到`scheduler`而不是`sched`，并且它的栈指针指向当前CPU的调用程序栈（scheduler stack）
+
+# lab7
+
+## Uthread: switching between threads (moderate)
+
+![img](lab7.assets/p1.png)
+
+在xv6 book的chapter7中讲的是用户态进程切换到另一个用户态进程，通过在内核中的调度程序去进行切换。在这个实验中我们需要去写一个用户态的调度程序（其中切换寄存器需要在内核中运行）去模拟内核中的调度程序去实现用户态线程之间的切换，所以我们需要自己定义属于thread的context去保存寄存器的值。
+
+- 定义用户态的上下文结构体tcontext
+
+  ```c
+  // 用户线程的上下文结构体
+  struct tcontext {
+    uint64 ra;
+    uint64 sp;
+  
+    // callee-saved
+    uint64 s0;
+    uint64 s1;
+    uint64 s2;
+    uint64 s3;
+    uint64 s4;
+    uint64 s5;
+    uint64 s6;
+    uint64 s7;
+    uint64 s8;
+    uint64 s9;
+    uint64 s10;
+    uint64 s11;
+  };
+  
+  ```
+
+- 修改thread结构体，添加context字段
+
+  ```c
+  struct thread {
+    char            stack[STACK_SIZE];  /* the thread's stack */
+    int             state;              /* FREE, RUNNING, RUNNABLE */
+    struct tcontext context;            /* 用户进程上下文 */
+  };
+  ```
+
+- 模仿kernel/swtch.S，在kernel/uthread_switch.S中写入以下代码
+
+  ```c
+  .text
+  
+  /*
+  * save the old thread's registers,
+  * restore the new thread's registers.
+  */
+  
+  .globl thread_switch
+  thread_switch:
+      /* YOUR CODE HERE */
+      sd ra, 0(a0)
+      sd sp, 8(a0)
+      sd s0, 16(a0)
+      sd s1, 24(a0)
+      sd s2, 32(a0)
+      sd s3, 40(a0)
+      sd s4, 48(a0)
+      sd s5, 56(a0)
+      sd s6, 64(a0)
+      sd s7, 72(a0)
+      sd s8, 80(a0)
+      sd s9, 88(a0)
+      sd s10, 96(a0)
+      sd s11, 104(a0)
+  
+      ld ra, 0(a1)
+      ld sp, 8(a1)
+      ld s0, 16(a1)
+      ld s1, 24(a1)
+      ld s2, 32(a1)
+      ld s3, 40(a1)
+      ld s4, 48(a1)
+      ld s5, 56(a1)
+      ld s6, 64(a1)
+      ld s7, 72(a1)
+      ld s8, 80(a1)
+      ld s9, 88(a1)
+      ld s10, 96(a1)
+      ld s11, 104(a1)
+      ret    /* return to ra */
+  ```
+
+- 修改`thread_scheduler`，添加线程切换语句
+
+  ```c
+  ...
+  if (current_thread != next_thread) {         /* switch threads?  */
+    ...
+    /* YOUR CODE HERE */
+    thread_switch((uint64)&t->context, (uint64)&current_thread->context);
+  } else
+    next_thread = 0;
+  
+  ```
+
+- 在`thread_create`中对`thread`结构体做一些初始化设定，主要是`ra`返回地址和`sp`栈指针，其他的都不重要，将回调函数放在thread的返回地址上来让第一次调用thread_scheduler时可以调用该线程的回调函数
+
+  ```c
+  // YOUR CODE HERE
+  t->context.ra = (uint64)func;                   // 设定函数返回地址
+  t->context.sp = (uint64)t->stack + STACK_SIZE;  // 设定栈指针
+  ```
+
+## Using threads
+
+来看一下程序的运行过程：设定了五个散列桶，根据键除以5的余数决定插入到哪一个散列桶中，插入方法是头插法，下面是图示
+
+不支持在 Docs 外粘贴 block
+
+这个实验比较简单，首先是问为什么为造成数据丢失：
+
+> 假设现在有两个线程T1和T2，两个线程都走到put函数，且假设两个线程中key%NBUCKET相等，即要插入同一个散列桶中。两个线程同时调用insert(key, value, &table[i], table[i])，insert是通过头插法实现的。如果先insert的线程还未返回另一个线程就开始insert，那么前面的数据会被覆盖
+
+因此只需要对插入操作上锁即可
+
+- 为每个散列桶定义一个锁，将五个锁放在一个数组中，并进行初始化
+
+  ```c
+  pthread_mutex_t lock[NBUCKET] = { PTHREAD_MUTEX_INITIALIZER }; // 每个散列桶一把锁
+  ```
+
+- (2). 在`put`函数中对`insert`上锁
+
+  ```c
+  if(e){
+      // update the existing key.
+      e->value = value;
+  } else {
+      pthread_mutex_lock(&lock[i]);
+      // the new is new.
+      insert(key, value, &table[i], table[i]);
+      pthread_mutex_unlock(&lock[i]);
+  }
+  ```
+
+# Barrier
+
+- 保证在所有线程到达之前barrier之前不会有线程先退出barrier，否则会导致断言函数abort
+
+  ```c
+  static void 
+  barrier()
+  {
+    // 申请持有锁
+    pthread_mutex_lock(&bstate.barrier_mutex);
+  
+    bstate.nthread++;
+    if(bstate.nthread == nthread) {
+      // 所有线程已到达
+      bstate.round++;
+      bstate.nthread = 0;
+      pthread_cond_broadcast(&bstate.barrier_cond);
+    } else {
+      // 等待其他线程
+      // 调用pthread_cond_wait时，mutex必须已经持有
+      pthread_cond_wait(&bstate.barrier_cond, &bstate.barrier_mutex);
+    }
+    // 释放锁
+    pthread_mutex_unlock(&bstate.barrier_mutex);
+  }
+  ```
+
+  
+
+
+
