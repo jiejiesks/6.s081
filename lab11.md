@@ -4,13 +4,13 @@
 
 让我从最底层开始，我们先来看一下一个以太网packet的结构是什么。当两个主机非常靠近时，或许是通过相同的线缆连接，或许连接在同一个wifi网络，或许连接到同一个以太网交换机。当局域网中的两个主机彼此间要通信时，最底层的协议是以太网协议。你可以认为Host1通过以太网将Frame发送给Host2。Frame是以太网中用来描述packet的单词，本质上这就是两个主机在以太网上传输的一个个的数据Byte。以太网协议会在Frame中放入足够的信息让主机能够识别彼此，并且识别这是不是发送给自己的Frame。每个以太网packet在最开始都有一个Header，其中包含了3个数据。Header之后才是payload数据。Header中的3个数据是：目的以太网地址，源以太网地址，以及packet的类型。
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MNzsFhzcgT0Lqe-M1YG%2F-MO3z5nk1S_cjrsBD1f7%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241332230.png)
 
 每一个以太网地址都是48bit的数字，这个数字唯一识别了一个网卡。packet的类型会告诉接收端的主机该如何处理这个packet。接收端主机侧更高层级的网络协议会按照packet的类型检查并处理以太网packet中的payload。
 
 整个以太网packet，包括了48bit+48bit的以太网地址，16bit的类型，以及任意长度的payload这些都是通过线路传输。除此之外，虽然对于软件来说是不可见的，但是在packet的开头还有被硬件识别的表明packet起始的数据（注，Preamble + SFD），在packet的结束位置还有几个bit表明packet的结束（注，FCS）。packet的开头和结束的标志不会被系统内核所看到，其他的部分会从网卡送到系统内核。
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MNzsFhzcgT0Lqe-M1YG%2F-MO40ML0u3lTAh70m_1u%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241332980.png)
 
 如果你们查看了这门课程的最后一个lab，你们可以发现我们提供的代码里面包括了一些新的文件，其中包括了kernel/net.h，这个文件中包含了大量不同网络协议的packet header的定义。上图中的代码包含了以太网协议的定义。我们提供的代码使用了这里结构体的定义来解析收到的以太网packet，进而获得目的地址和类型值（注，实际中只需要对收到的raw data指针强制类型转换成结构体指针就可以完成解析）。
 
@@ -24,7 +24,7 @@
 
 在实际中，你可以使用tcpdump来查看以太网packet。这将会是lab的一部分。下图是tcpdump的一个输出：
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MO40Vq8POBpsayQpuQp%2F-MO8zlyQREcVbqVrEmiE%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241333883.png)
 
 tcpdump输出了很多信息，其中包括：
 
@@ -66,7 +66,7 @@ tcpdump输出了很多信息，其中包括：
 
 下图是一个ARP packet的格式：
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MO40Vq8POBpsayQpuQp%2F-MO95Pzg6uAEFzE35KkY%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241333072.png)
 
 它会出现在一个以太网packet的payload中。所以你们看到的将会是这样的结构：首先是以太网header，它包含了48bit的目的以太网地址，48bit的源以太网地址，16bit的类型；之后的以太网的payload会是ARP packet，包含了上图的内容。
 
@@ -76,7 +76,7 @@ tcpdump输出了很多信息，其中包括：
 
 同样的，我们也可以通过tcpdump来查看这些packet。在网络的lab中，XV6会在QEMU模拟的环境下发送IP packet。所以你们可以看到在XV6和其他主机之间有ARP的交互。下图中第一个packet是我的主机想要知道XV6主机的以太网地址，第二个packet是XV6在收到了第一个packet之后，并意识到自己是IP地址的拥有者，然后返回response。
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MO40Vq8POBpsayQpuQp%2F-MO97sCnlq2lUQVrRkzq%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241333146.png)
 
 tcpdump能够解析出ARP packet，并将数据打印在第一行。对应ARP packet的格式，在第一个packet中，10.0.2.2是SIP，10.0.2.15是DIP。在第二个packet中，52:54:00:12:34:56对应SHA。
 
@@ -118,11 +118,11 @@ tcpdump能够解析出ARP packet，并将数据打印在第一行。对应ARP pa
 
 我希望你们在刚刚的讨论中注意到这一点，网络协议和网络协议header是嵌套的。我们刚刚看到的是一个packet拥有了ethernet header和ethernet payload。在ethernet payload中，首先出现的是ARP header，对于ARP来说并没有的payload。但是在ethernet packet中还可以包含其他更复杂的结构，比如说ethernet payload中包含一个IP packet，IP packet中又包含了一个UDP packet，所以IP header之后是UDP header。如果在UDP中包含另一个协议，那么UDP payload中又可能包含其他的packet，例如DNS packet。所以发送packet的主机会按照这样的方式构建packet：DNS相关软件想要在UDP协议之上构建一个packet；UDP相关软件会将UDP header挂在DNS packet之前，并在IP协议之上构建另一个packet；IP相关的软件会将IP heade挂在UDP packet之前；最后Ethernet相关的软件会将Ethernet header挂在IP header之前。所以整个packet是在发送过程中逐渐构建起来的。
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MO9AUbfTj-IlKsNex3Z%2F-MOEQdZYLWbFzmTOqCsg%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241333965.png)
 
 类似的，当一个操作系统收到了一个packet，它会先解析第一个header并知道这是Ethernet，经过一些合法性检查之后，Ethernet header会被剥离，操作系统会解析下一个header。在Ethernet  header中包含了一个类型字段，它表明了该如何解析下一个header。同样的在IP header中包含了一个protocol字段，它也表明了该如何解析下一个header。
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MO9AUbfTj-IlKsNex3Z%2F-MOEQnqX1sjdNoswyO7F%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241333308.png)
 
 软件会解析每个header，做校验，剥离header，并得到下一个header。一直重复这个过程直到得到最后的数据。这就是嵌套的packet header。
 
@@ -130,11 +130,11 @@ tcpdump能够解析出ARP packet，并将数据打印在第一行。对应ARP pa
 
 Ethernet header足够在一个局域网中将packet发送到一个host。如果你想在局域网发送一个IP packet，那么你可以使用ARP获得以太网地址。但是IP协议更加的通用，IP协议能帮助你向互联网上任意位置发送packet。下图是一个IP packet的header，你们可以在lab配套的代码中的net.h文件找到。
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MO9AUbfTj-IlKsNex3Z%2F-MOESlRbJsr7WEE4pJzi%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241333140.png)
 
 如果IP packet是通过以太网传输，那么你可以看到，在一个以太网packet中，最开始是目的以太网地址，源以太网地址，以太网类型是0x0800，之后是IP header，最后是IP payload。
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MO9AUbfTj-IlKsNex3Z%2F-MOETibgLGajiB82bzej%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241333154.png)
 
 在一个packet发送到世界另一端的网络的过程中，IP header会被一直保留，而Ethernet header在离开本地的以太网之后会被剥离。或许packet在被路由的过程中，在每一跳（hop）会加上一个新的Ethernet header。但是IP header从源主机到目的主机的过程中会一直保留。
 
@@ -144,15 +144,15 @@ IP header具有全局的意义，而Ethernet header只在单个局域网有意�
 
 接下来我们看一下包含了IP packet的tcpdump输出。
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MO9AUbfTj-IlKsNex3Z%2F-MOEXfK0lywrVj1OVgD7%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241333342.png)
 
 因为这个IP packet是在以太网上传输，所以它包含了以太网header。呃……，实际上这个packet里面有点问题，我不太确定具体的原因是什么，但是Ethernet header中目的以太网地址不应该是全f，因为全f是广播地址，它会导致packet被发送到所有的主机上。一个真实网络中两个主机之间的packet，不可能出现这样的以太网地址。所以我提供的针对network lab的方案，在QEMU上运行有点问题。不管怎么样，我们可以看到以太网目的地址，以太网源地址，以及以太网类型0x0800。0x0800表明了Ethernet payload是一个IP packet。
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MO9AUbfTj-IlKsNex3Z%2F-MOEZ4BXyrGBTXmWOQvC%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241333338.png)
 
 IP header的长度是20个字节，所以中括号内的是IP header，
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MOEZ9iqKkt92zbewl4r%2F-MOPw1qnEjiOAkSTe3Yi%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241333699.png)
 
 从后向前看：
 
@@ -184,7 +184,7 @@ IP header足够让一个packet传输到互联网上的任意一个主机，但�
 
 UDP header中最关键的两个字段是sport源端口和dport目的端口。
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MOEZ9iqKkt92zbewl4r%2F-MOQ0ZD1O8xfxdq8_uRj%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241334397.png)
 
 当你的应用程序需要发送或者接受packet，它会使用socket API，这包含了一系列的系统调用。一个进程可以使用socket API来表明应用程序对于特定目的端口的packet感兴趣。当应用程序调用这里的系统调用，操作系统会返回一个文件描述符。每当主机收到了一个目的端口匹配的packet，这个packet会出现在文件描述符中，之后应用程序就可以通过文件描述符读取packet。
 
@@ -192,11 +192,11 @@ UDP header中最关键的两个字段是sport源端口和dport目的端口。
 
 接下来我们看一下UDP packet的tcpdump输出。首先，我们同样会有一个以太网Header，以及20字节的IP header。IP header中的0x11表明这个packet的IP协议号是17，这样packet的接收主机就知道应该使用UDP软件来处理这个packet。
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MOEZ9iqKkt92zbewl4r%2F-MOQ6WulHc9P9FS0aSs9%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241334665.png)
 
 接下来的8个字节是UDP header。这里的packet是由lab代码生成的packet，所以它并没有包含常见的端口，源端口是0x0700，目的端口是0x6403。第4-5个字节是长度，第6-7个字节是校验和。XV6的UDP软件并没有生成UDP的校验和。
 
-![img](lab11.assets/assets%2F-MHZoT2b_bcLghjAOPsJ%2F-MOEZ9iqKkt92zbewl4r%2F-MOQ8CJUdG6ZCj_7xuAV%2Fimage.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202305241334597.png)
 
 UDP header之后就是UDP的payload。在这个packet中，应用程序发送的是ASCII文本，所以我们可以从右边的ASCII码看到，内容是“a.message.from.xv6”。所以ASCII文本放在了一个UDP packet中，然后又放到了一个IP packet中，然后又放到了一个Ethernet packet中。最后发布到以太网上。
 
