@@ -30,7 +30,7 @@ xv6文件系统实现分为七层，如图8.1所示。磁盘层读取和写入vi
 
 文件系统必须有将索引节点和内容块存储在磁盘上哪些位置的方案。为此，xv6将磁盘划分为几个部分，如图8.2所示。文件系统不使用块0（它保存引导扇区）。块1称为超级块：它包含有关文件系统的元数据（文件系统大小（以块为单位）、数据块数、索引节点数和日志中的块数）。从2开始的块保存日志。日志之后是索引节点，每个块有多个索引节点。然后是位图块，跟踪正在使用的数据块。其余的块是数据块：每个都要么在位图块中标记为空闲，要么保存文件或目录的内容。超级块由一个名为`mkfs`的单独的程序填充，该程序构建初始文件系统。
 
-![img](lab9：File system.assets/p1-20230411125539196.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202310312131698.png)
 
 本章的其余部分将从缓冲区高速缓存层开始讨论每一层。注意那些在较低层次上精心选择的抽象可以简化较高层次的设计的情况。
 
@@ -273,7 +273,7 @@ commit()
 
 这段代码被包装在一个循环中，该循环一次将大的写操作分解为几个扇区的单个事务，以避免日志溢出。作为此事务的一部分，对`writei`的调用写入许多块：文件的inode、一个或多个位图块以及一些数据块。
 
-![image-20230411140204492](lab9：File system.assets/image-20230411140204492.png)
+![image-20230411140204492](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202310312132550.png)
 
 ## 8.7 代码：块分配器
 
@@ -331,7 +331,7 @@ Xv6没有实现这两种解决方案，这意味着inode可能被标记为已在
 
 磁盘上的inode结构体`struct dinode`包含一个`size`和一个块号数组（见图8.3）。inode数据可以在`dinode`的`addrs`数组列出的块中找到。前面的`NDIRECT`个数据块被列在数组中的前`NDIRECT`个元素中；这些块称为直接块（direct blocks）。接下来的`NINDIRECT`个数据块不在inode中列出，而是在称为间接块（indirect block）的数据块中列出。`addrs`数组中的最后一个元素给出了间接块的地址。因此，可以从inode中列出的块加载文件的前12 kB（`NDIRECT x BSIZE`）字节，而只有在查阅间接块后才能加载下一个256 kB（`NINDIRECT x BSIZE`）字节。这是一个很好的磁盘表示，但对于客户端来说较复杂。函数`bmap`管理这种表示，以便实现我们将很快看到的如`readi`和`writei`这样的更高级例程。`bmap(struct inode *ip, uint bn)`返回索引结点`ip`的第`bn`个数据块的磁盘块号。如果`ip`还没有这样的块，`bmap`会分配一个。
 
-![img](lab9：File system.assets/p2.png)
+![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202310312132570.png)
 
 函数`bmap`（***kernel/fs.c\***:378）从简单的情况开始：前面的`NDIRECT`个块在inode本身中列出（***kernel/fs.c\***:383-387）中。下面`NINDIRECT`个块在`ip->addrs[NDIRECT]`的间接块中列出。`Bmap`读取间接块（***kernel/fs.c\***:394），然后从块内的正确位置（***kernel/fs.c\***:395）读取块号。如果块号超过`NDIRECT+NINDIRECT`，则`bmap`调用`panic`崩溃；`writei`包含防止这种情况发生的检查（***kernel/fs.c\***:490）。
 
@@ -422,7 +422,7 @@ $
   #define MAXFILE (NDIRECT + NINDIRECT + SECNINDIRECT
   ```
 
-- 修改bmap的二级索引，仿照一级索引来写![img](lab9：File system.assets/p2.png)
+- 修改bmap的二级索引，仿照一级索引来写![img](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202310312132655.png)
 
   ```c
   if (bn < NINDIRECT)

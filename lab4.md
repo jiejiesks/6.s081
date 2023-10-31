@@ -148,11 +148,11 @@ printf("x=%d y=%d", 3);
 
 - auipc`(Add Upper Immediate to PC)：`auipc rd imm`，将高位立即数加到PC上，从下面的指令格式可以看出，该指令将20位的立即数左移12位之后（右侧补0）加上PC的值，将结果保存到dest位置，图中为`rd`寄存器
 
-![image-20230401144844984](lab4.assets/image-20230401144844984.png)
+![image-20230401144844984](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202310312131911.png)
 
 ​	下面来看`jalr` (jump and link register)：`jalr rd, offset(rs1)`跳转并链接寄存器。jalr指令会将当前PC+4	保存在rd中，然后跳转到指定的偏移地址`offset(rs1)`。
 
-![image-20230401144821862](lab4.assets/image-20230401144821862.png)
+![image-20230401144821862](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202310312131631.png)
 
 ```
 	30:	00000097          	auipc	ra,0x0
@@ -198,7 +198,7 @@ r_fp()
 
   - 首先先来认识下帧栈（stack frame）
 
-  ![image-20230403211008017](lab4.assets/image-20230403211008017.png)
+  ![image-20230403211008017](https://jiejiesks.oss-cn-beijing.aliyuncs.com/Note/202310312131503.png)
 
   每一次函数的调用,都会在调用栈(call stack)上维护一个独立的栈帧(stack frame).每个独立的栈帧一般包括:
 
